@@ -3,11 +3,11 @@ package ru.noties.simpleprefs;
 /**
  * Created by Dimitry Ivanov on 08.05.2015.
  */
-public class BatchImpl implements Batch {
+class BatchImpl implements Batch {
 
     private final SimplePref mPref;
 
-    public BatchImpl(SimplePref pref) {
+    BatchImpl(SimplePref pref) {
         this.mPref = pref;
     }
 

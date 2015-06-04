@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import ru.noties.debug.Debug;
 import ru.noties.simpleprefs.SimplePref;
+import ru.noties.simpleprefs.sample.OtherPrefs$$SP;
 
 public class MainActivity extends ActionBarActivity {
 
