@@ -1,14 +1,16 @@
 package ru.noties.simpleprefs.sample;
 
 import android.content.Context;
+import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
 
+import java.util.Date;
 import java.util.UUID;
 
 import ru.noties.debug.Debug;
 import ru.noties.simpleprefs.SimplePref;
+import ru.noties.simpleprefs.obj.PrefsObject;
 
 public class MainActivity extends ActionBarActivity {
 
@@ -24,6 +26,10 @@ public class MainActivity extends ActionBarActivity {
         showcaseBatch();
 
         showcaseOnUpdateListener();
+
+        showcaseSerialization();
+
+        showCaseSingleton();
     }
 
     private void showcaseSimple() {
@@ -91,5 +97,27 @@ public class MainActivity extends ActionBarActivity {
         };
 
         handler.post(updateRunnable);
+    }
+
+    private void showcaseSerialization() {
+        final PrefWithJsonSerialization pref = PrefsObject.create(PrefWithJsonSerialization.class, this);
+        final SimplePref simplePref = new SimplePref(this, pref.getWrappedPreferencesName());
+        final Date now = pref.getSomeDate();
+        pref.setSomeDate(new Date());
+        Debug.i("was: %s, now: %s, prefValue: %s", now, pref.getSomeDate(), simplePref.get("someDate"));
+    }
+
+    private void showCaseSingleton() {
+        final PrefWithJsonSerialization pref = PrefWithJsonSerialization.create(PrefWithJsonSerialization.class, this);
+        for (int i = 0; i < 5; i++) {
+            final int index = i;
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    final PrefWithJsonSerialization got = PrefWithJsonSerialization.create(PrefWithJsonSerialization.class, MainActivity.this);
+                    Debug.i("Thread #%d, equals: %s", index, pref == got);
+                }
+            }).start();
+        }
     }
 }

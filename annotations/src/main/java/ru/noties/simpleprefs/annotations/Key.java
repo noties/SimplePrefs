@@ -12,9 +12,9 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface Key {
 
-    String DEFAULT_STRING = "";
+    String name()           default Constants.DEF_STRING;
+    String defaultValue()   default Constants.DEF_STRING;
 
-    String name()           default DEFAULT_STRING;
-    String defaultValue()   default DEFAULT_STRING;
-
+    // for json key defaultValue would not be considered
+    boolean isJson() default false;
 }

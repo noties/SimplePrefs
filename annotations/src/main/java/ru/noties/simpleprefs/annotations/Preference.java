@@ -12,7 +12,15 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface Preference {
 
-    String DEFAULT = "";
+    String value() default Constants.DEF_STRING;
 
-    String value() default DEFAULT;
+    boolean isSingleton() default false;
+
+    JsonLibrary jsonLibrary() default JsonLibrary.GSON;
+    boolean isJsonVariableStatic() default false;
+
+    boolean catchJsonExceptions() default false;
+
+    Class[] jsonTypes() default {};
+    Class[] jsonTypeSerializers() default {};
 }

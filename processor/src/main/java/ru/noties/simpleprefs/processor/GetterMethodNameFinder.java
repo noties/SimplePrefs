@@ -33,15 +33,14 @@ public class GetterMethodNameFinder extends AbsFinder {
         final TypeMirror keyType = key.asType();
         final TypeKind keyTypeKind = keyType.getKind();
 
-        final boolean isBoolean = keyTypeKind.isPrimitive() && keyTypeKind == TypeKind.BOOLEAN;
-        final boolean isSecondPassBoolean = !mSecondPass && isBoolean;
-        mSecondPass = false;
+        final boolean isBoolean = keyTypeKind == TypeKind.BOOLEAN;
 
         final String getterMethod;
-        if (!isSecondPassBoolean) {
+        if (isBoolean && !mSecondPass) {
             getterMethod = MethodNameUtils.createBooleanGetter(fieldName);
         } else {
             getterMethod = MethodNameUtils.createGetter(fieldName);
+            mSecondPass = false;
         }
 
         String name;
@@ -79,7 +78,7 @@ public class GetterMethodNameFinder extends AbsFinder {
             }
         }
 
-        if (!isSecondPassBoolean) {
+        if (isBoolean && !mSecondPass) {
             mSecondPass = true;
             return findName(keyName, key, enclosedElements);
         }

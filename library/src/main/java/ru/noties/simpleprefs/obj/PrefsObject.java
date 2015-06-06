@@ -38,4 +38,7 @@ public class PrefsObject {
         return mPref.getSharedPreferencesName();
     }
 
+    protected void onJsonExceptionHandled(Throwable t) {
+
+    }
 }

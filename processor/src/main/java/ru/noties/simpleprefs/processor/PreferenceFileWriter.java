@@ -10,6 +10,7 @@ import javax.annotation.processing.Filer;
 import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.JavaFileObject;
 
 /**
@@ -18,11 +19,16 @@ import javax.tools.JavaFileObject;
 public class PreferenceFileWriter {
 
     private static final String ON_UPDATE_NAME = "mOnUpdateListener";
+    private static final String SINGLETON_NAME = "sInstance";
 
+    private final Logger mLogger;
+    private final Types mTypeUtils;
     private final Elements mElementsUtils;
     private final Filer mFiler;
 
-    public PreferenceFileWriter(Elements elementUtils, Filer filer) {
+    public PreferenceFileWriter(Logger logger, Types types, Elements elementUtils, Filer filer) {
+        this.mLogger = logger;
+        this.mTypeUtils = types;
         this.mElementsUtils = elementUtils;
         this.mFiler = filer;
     }
@@ -31,7 +37,12 @@ public class PreferenceFileWriter {
         final String className = holder.annotatedClass.getSimpleName().toString() + "$$SP";
         final JavaFileObject jfo = mFiler.createSourceFile(className);
         final Writer writer = jfo.openWriter();
+
         final boolean hasOnUpdate = hasOnUpdate(holder);
+        final boolean hasJson = hasJson(holder);
+
+        final JsonLibraryGenerator jsonLibraryGenerator = JsonLibraryGeneratorFactory
+                .create(mLogger, mTypeUtils, hasJson ? holder.jsonLibrary : null, holder.isStatic);
 
         final Indent indent = new Indent();
 
@@ -50,19 +61,19 @@ public class PreferenceFileWriter {
                 .append(holder.annotatedClass.getQualifiedName().toString())
                 .append(" {\n\n");
 
-        // create static `create()` method
-        builder.append(indent.increment())
-                .append("public static Object create(android.content.Context context) {\n")
-                .append(indent.increment())
-                .append("return new ")
-                .append(className)
-                .append("(context);\n")
-                .append(indent.decrement())
-                .append("}\n\n");
+        indent.increment();
+
+        builder.append(createCreateStatement(indent, holder, className));
+
+        // gson
+        if (hasJson) {
+            builder.append(jsonLibraryGenerator.initializeJsonVariable(indent, holder.jsonTypes, holder.jsonTypeSerializers))
+                    .append("\n\n");
+        }
 
         // create default constructor
         builder.append(indent)
-                .append("public ")
+                .append("private ")
                 .append(className)
                 .append("(")
                 .append("android.content.Context context")
@@ -99,7 +110,7 @@ public class PreferenceFileWriter {
                     .append(type)
                     .append(" value) {\n")
                     .append(indent.increment())
-                    .append(createSet(keyHolder.keyName))
+                    .append(createSet(indent, jsonLibraryGenerator, keyHolder, holder.catchJsonExceptions))
                     .append("\n")
                     .append(indent.decrement())
                     .append("}\n\n");
@@ -113,8 +124,7 @@ public class PreferenceFileWriter {
                     .append(getterName)
                     .append("() {\n")
                     .append(indent.increment())
-                    .append("return ")
-                    .append(createGet(keyHolder.keyElement, keyHolder.keyName, keyHolder.keyDefaultValue))
+                    .append(createGet(indent, jsonLibraryGenerator, keyHolder, holder.catchJsonExceptions))
                     .append("\n")
                     .append(indent.decrement())
                     .append("}\n\n");
@@ -156,7 +166,7 @@ public class PreferenceFileWriter {
         writer.close();
     }
 
-    private boolean hasOnUpdate(PreferenceHolder holder) {
+    private static boolean hasOnUpdate(PreferenceHolder holder) {
         for (KeyHolder key: holder.keyHolders) {
             if (!TextUtils.isEmpty(key.onUpdateMethodName)) {
                 return true;
@@ -165,11 +175,154 @@ public class PreferenceFileWriter {
         return false;
     }
 
-    private String createSet(String name) {
-        return "mPref.set(\"" + name + "\", value);";
+    private static boolean hasJson(PreferenceHolder holder) {
+        for (KeyHolder key: holder.keyHolders) {
+            if (key.isJson) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    private String createGet(Element element, String name, String defaultValue) {
+    private static String createCreateStatement(Indent indent, PreferenceHolder holder, String className) {
+
+        final StringBuilder builder = new StringBuilder();
+
+        if (holder.isSingleton) {
+            builder.append(indent)
+                    .append("private static volatile ")
+                    .append(className)
+                    .append(' ')
+                    .append(SINGLETON_NAME)
+                    .append(" = null;\n\n");
+        }
+
+        builder.append(indent)
+                .append("public static Object create(android.content.Context context) {\n")
+                .append(indent.increment());
+
+        if (!holder.isSingleton) {
+            builder.append("return new ")
+                    .append(className)
+                    .append("(context);\n");
+        } else {
+
+            builder.append(className)
+                    .append(' ')
+                    .append("local")
+                    .append(" = ")
+                    .append(SINGLETON_NAME)
+                    .append(";\n")
+                    .append(indent)
+                    .append("if (local == null) {\n")
+                        .append(indent.increment())
+                        .append("synchronized(")
+                        .append(className)
+                        .append(".class) {\n")
+                            .append(indent.increment())
+                            .append("if (local == null) {\n")
+                                .append(indent.increment())
+                                .append("local = ")
+                                .append(SINGLETON_NAME)
+                                .append(" = new ")
+                                .append(className)
+                                .append("(context);\n")
+                            .append(indent.decrement())
+                            .append("}\n")
+                        .append(indent.decrement())
+                        .append("}\n")
+                    .append(indent.decrement())
+                    .append("}\n")
+                    .append(indent)
+                    .append("return local;\n");
+        }
+
+        builder.append(indent.decrement())
+                .append("}\n\n");
+
+        return builder.toString();
+    }
+
+    private static String createSet(Indent indent, JsonLibraryGenerator jsonLibraryGenerator, KeyHolder key, boolean catchJsonExceptions) {
+        if (jsonLibraryGenerator == null
+                || !key.isJson) {
+            return createSimpleSet(key.keyName, "value");
+        }
+
+        final StringBuilder builder = new StringBuilder();
+
+        if (catchJsonExceptions) {
+            builder.append("try {\n")
+                    .append(indent.increment());
+        }
+
+        builder.append("final String json;\n")
+                .append(indent)
+                .append("if (value != null) { json = ")
+                .append(jsonLibraryGenerator.toJson("value"))
+                .append(" }\n")
+                .append(indent)
+                .append("else { ")
+                .append("json = null; }\n")
+                .append(indent)
+                .append(createSimpleSet(key.keyName, "json"));
+
+        if (catchJsonExceptions) {
+            builder.append("\n")
+                    .append(indent.decrement())
+                    .append("} catch(java.lang.Throwable t) {\n")
+                    .append(indent.increment())
+                    .append("onJsonExceptionHandled(t);\n")
+                    .append(indent.decrement())
+                    .append("}");
+
+        }
+
+        return builder.toString();
+    }
+
+    private static String createSimpleSet(String name, String value) {
+        return "mPref.set(\"" + name + "\", " + value + ");";
+    }
+
+    private static String createGet(Indent indent, JsonLibraryGenerator jsonLibraryGenerator, KeyHolder key, boolean catchJsonExceptions) {
+        if (jsonLibraryGenerator == null
+                || !key.isJson) {
+            return "return " + createSimpleGet(key.keyElement, key.keyName, key.keyDefaultValue);
+        }
+
+        final StringBuilder builder = new StringBuilder();
+
+        if (catchJsonExceptions) {
+            builder.append("try {\n")
+                    .append(indent.increment());
+        }
+
+        builder.append("final String json = ")
+                .append(createSimpleGet(key.keyElement, key.keyName, null))
+                .append("\n")
+                .append(indent)
+                .append("if (json == null) { return null; }\n")
+                .append(indent)
+                .append("return ")
+                .append(jsonLibraryGenerator.fromJson("json", key.keyElement.asType()));
+
+        if (catchJsonExceptions) {
+            builder.append("\n")
+                    .append(indent.decrement())
+                    .append("} catch(java.lang.Throwable t) {\n")
+                    .append(indent.increment())
+                    .append("onJsonExceptionHandled(t);\n")
+                    .append(indent)
+                    .append("return null;\n")
+                    .append(indent.decrement())
+                    .append("}");
+        }
+
+        return builder.toString();
+    }
+
+    private static String createSimpleGet(Element element, String name, String defaultValue) {
 
         final TypeMirror mirror = element.asType();
 
