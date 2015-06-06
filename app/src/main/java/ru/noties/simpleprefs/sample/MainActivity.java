@@ -5,12 +5,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import ru.noties.debug.Debug;
 import ru.noties.simpleprefs.SimplePref;
 import ru.noties.simpleprefs.obj.PrefsObject;
+import ru.noties.simpleprefs.sample.obj.ColorObject;
+import ru.noties.simpleprefs.sample.obj.GenericObject;
 
 public class MainActivity extends ActionBarActivity {
 
@@ -105,6 +109,21 @@ public class MainActivity extends ActionBarActivity {
         final Date now = pref.getSomeDate();
         pref.setSomeDate(new Date());
         Debug.i("was: %s, now: %s, prefValue: %s", now, pref.getSomeDate(), simplePref.get("someDate"));
+
+        final GenericObject<ColorObject> nowGeneric = pref.getGenericObject();
+        final ColorObject colorObject = new ColorObject();
+        colorObject.setColor(0xFFff0000);
+        colorObject.setName("Blood red");
+        final GenericObject<ColorObject> newGeneric = new GenericObject<>();
+        newGeneric.value = colorObject;
+
+        pref.setGenericObject(newGeneric);
+        Debug.i("was: %s, now: %s, prefValue: %s", nowGeneric, newGeneric, simplePref.get("genericObject"));
+
+        final List<String> nowList = pref.getSomeStringList();
+        final List<String> newList = Arrays.asList("one", "two", "three");
+        pref.setSomeStringList(newList);
+        Debug.i("was: %s, now: %s, prefValue: %s", nowList, newList, simplePref.get("someStringList"));
     }
 
     private void showCaseSingleton() {
