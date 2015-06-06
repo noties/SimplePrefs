@@ -10,4 +10,8 @@ public class TextUtils {
     public static boolean isEmpty(String text) {
         return text == null || text.length() == 0;
     }
+
+    public static String capFirstLetter(String value) {
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
+    }
 }

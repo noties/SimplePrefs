@@ -64,7 +64,7 @@ public class UIPrefs extends PrefsObject {
         this.someFloat = someFloat;
     }
 
-    public boolean getSomeBoolean() {
+    public boolean isSomeBoolean() {
         return someBoolean;
     }
 

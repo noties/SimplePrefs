@@ -5,6 +5,7 @@ import java.util.List;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.type.ExecutableType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
@@ -18,6 +19,8 @@ public class GetterMethodNameFinder extends AbsFinder {
 
     private final TypeChecker mChecker;
 
+    private boolean mSecondPass;
+
     public GetterMethodNameFinder(Logger logger, Types types) {
         super(logger, types);
         mChecker = new GetterChecker();
@@ -26,8 +29,20 @@ public class GetterMethodNameFinder extends AbsFinder {
     @Override
     public String findName(String keyName, Element key, List<? extends Element> enclosedElements) {
 
+        final String fieldName = key.getSimpleName().toString();
         final TypeMirror keyType = key.asType();
-        final String getterMethod = MethodNameUtils.createGetter(key.getSimpleName().toString());
+        final TypeKind keyTypeKind = keyType.getKind();
+
+        final boolean isBoolean = keyTypeKind.isPrimitive() && keyTypeKind == TypeKind.BOOLEAN;
+        final boolean isSecondPassBoolean = !mSecondPass && isBoolean;
+        mSecondPass = false;
+
+        final String getterMethod;
+        if (!isSecondPassBoolean) {
+            getterMethod = MethodNameUtils.createBooleanGetter(fieldName);
+        } else {
+            getterMethod = MethodNameUtils.createGetter(fieldName);
+        }
 
         String name;
         Getter getter;
@@ -62,6 +77,11 @@ public class GetterMethodNameFinder extends AbsFinder {
                     }
                 }
             }
+        }
+
+        if (!isSecondPassBoolean) {
+            mSecondPass = true;
+            return findName(keyName, key, enclosedElements);
         }
 
         mLogger.log(Diagnostic.Kind.ERROR, "Could not find getter method for a key: %s", key.getSimpleName());

@@ -22,6 +22,7 @@ public class OtherPrefs extends PrefsObject {
     @Key(name = "tkn")
     private String token;
 
+
     @Key(name = "ifl")
     private boolean isFirstLaunch;
 

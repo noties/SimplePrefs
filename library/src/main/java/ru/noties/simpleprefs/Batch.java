@@ -1,8 +1,10 @@
 package ru.noties.simpleprefs;
 
 /**
- * An interface to chain calls to {@link SimplePref} set() without applying to {@link android.content.SharedPreferences.Editor}.
+ * An interface to chain calls to {@link SimplePref} set()
+ * without applying to {@link android.content.SharedPreferences.Editor}.
  * After you are done with setting values do not forget to call {@link #apply()}
+ *
  * Created by Dimitry Ivanov on 08.05.2015.
  */
 public interface Batch {
