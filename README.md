@@ -1,4 +1,5 @@
 # SimplePrefs
+[![Android Arsenal](https://img.shields.io/badge/Android%20Arsenal-SimplePrefs-green.svg?style=flat)](https://android-arsenal.com/details/1/2067)
 
 SimplePrefs is an Android library that helps working with SharedPreferences.
 
