@@ -7,7 +7,7 @@ import android.content.SharedPreferences;
 /**
  * Simple wrapper around {@link SharedPreferences}
  * The main goal was to reduce boilerplate code aka prefs.edit().putSomeThing().apply();
- * Now we have only two basic methods get() & set()
+ * Now we have only two basic methods get() and set()
  * We overload it with value type. So to get a string from SharedPreference we call {@code pref.get("key", null)}
  * (we can specify <i>null</i> as a default value for a string as long as it is the only object type supported by SimplePref)
  *
