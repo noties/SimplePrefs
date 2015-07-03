@@ -5,6 +5,8 @@ import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.Element;
@@ -18,6 +20,7 @@ import javax.tools.JavaFileObject;
  */
 public class PreferenceFileWriter {
 
+    private static final Pattern EVAULATE_PATTERN = Pattern.compile("(\\$\\{)(.+)(\\})");
     private static final String ON_UPDATE_NAME = "mOnUpdateListener";
     private static final String SINGLETON_NAME = "sInstance";
 
@@ -352,12 +355,14 @@ public class PreferenceFileWriter {
 
         } else {
 
-            if (!mirror.getKind().isPrimitive()) {
-                def = "\"" + defaultValue + "\"";
-            } else {
+            final Matcher matcher = EVAULATE_PATTERN.matcher(defaultValue);
+            if (matcher.matches()) {
+                def = matcher.group(2);
+            } else if (mirror.getKind().isPrimitive()) {
                 def = defaultValue;
+            } else {
+                def = "\"" + defaultValue + "\"";
             }
-
         }
 
         return "mPref.get(\"" + name + "\", " + def + ");";

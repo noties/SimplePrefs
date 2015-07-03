@@ -12,7 +12,7 @@ import ru.noties.simpleprefs.obj.PrefsObject;
 @Preference
 public class AndYetAnotherPrefs extends PrefsObject {
 
-    @Key
+    @Key(defaultValue = "${String.valueOf(getSimpleBoolean())}")
     private String wrongString;
 
 
